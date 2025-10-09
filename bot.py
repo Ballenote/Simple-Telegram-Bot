@@ -1,66 +1,93 @@
-import telebot
-import requests 
 import os
 import subprocess
+import telebot
+import requests
 from dotenv import load_dotenv
 
-#loading secrets
-load_dotenv("secrets.env") 
-BOT_TOKEN=os.getenv("BOT_TOKEN")
-USER_ID=os.getenv("USER_ID")
-PUB_KEY=os.getenv("PUB_KEY")
+# loading secrets
+load_dotenv("secrets.env")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+USER_ID = os.getenv("USER_ID")
+PUB_KEY = os.getenv("PUB_KEY")
+PORT = os.getenv("PORT")
+
 
 def user_verification(uuid):
-    if(uuid==(int(USER_ID))):
+    #only my user ID can use the bot 
+    if (uuid == (int(USER_ID))):
         return True
     else:
         print(2)
         return False
 
-bot=telebot.TeleBot(BOT_TOKEN)
+
+def vpn_action(action):
+    #actually turning on or off the Wireguard VPN
+    result = subprocess.run(
+        ["sudo", 'wg-quick', action, 'wg0'],
+        capture_output=True,
+        text=True
+    )
+    return [result.returncode, result.stdout, result.stderr]
+
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+bot.send_message(USER_ID, "The bot is back online")
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    if(user_verification(message.from_user.id)==True):
+    if (user_verification(message.from_user.id) == True):
         bot.reply_to(message, "Welcome")
+
 
 @bot.message_handler(commands=['info'])
 def handle(message):
-    if(user_verification(message.from_user.id)==True):
-        pubip=requests.get("https://ifconfig.me/").text
-        bot.reply_to(message, f"The public IP is: {pubip}\nThe WireGuard port is 40959\nThe public key is {PUB_KEY}")
+    if (user_verification(message.from_user.id) == True):
+        pubip = requests.get("https://ifconfig.me/").text
+
+        bot.send_message(
+            USER_ID, f"The public IP is: \n\n`{pubip}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n", parse_mode='Markdown')
+
 
 @bot.message_handler(commands=['vpn_up'])
 def handle(message):
-    if(user_verification(message.from_user.id)==True):
-        try:
-            result = subprocess.run(
-            ["sudo",'wg-quick', 'up', 'wg0'],  
-            check=True,                    
-            stdout=subprocess.PIPE,        
-            stderr=subprocess.PIPE,        
-            text=True                      
-            )
+    if (user_verification(message.from_user.id) == True):
+        result = vpn_action("up")
+        if (result[0] == 0):
             bot.reply_to(message, "the VPN is now active")
+        elif (result[0] == 1):
+            bot.reply_to(message,  result[2])
+        else:
+            bot.reply_to(message,  result[2])
 
-        except subprocess.CalledProcessError as e:
-            bot.reply_to(message,  e.stderr)
-    
+
 @bot.message_handler(commands=['vpn_down'])
 def handle(message):
-    if(user_verification(message.from_user.id)==True):
-        try:
-            result = subprocess.run(
-            ["sudo",'wg-quick', 'down', 'wg0'],  
-            check=True,                    
-            stdout=subprocess.PIPE,        
-            stderr=subprocess.PIPE,        
-            text=True                      
-            )
+    if (user_verification(message.from_user.id) == True):
+        result = vpn_action("down")
+        if (result[0] == 0):
             bot.reply_to(message, "the VPN is now deactivated")
+        elif (result[0] == 1):
+            bot.reply_to(message,  result[2])
+        else:
+            bot.reply_to(message,  result[2])
 
-        except subprocess.CalledProcessError as e:
-            bot.reply_to(message,  e.stderr)
-    
-    
-
+@bot.message_handler(commands=['update'])
+#it could be useful to trigger a remote update on the raspberry
+def handle(message):
+    if (user_verification(message.from_user.id) == True):
+        result = subprocess.run(
+        ["sh","/home/casa/Documents/bot_updater.sh", "0"],
+        capture_output=True,
+        text=True
+        )
+        if (result.returncode==0):
+            bot.reply_to(message,  result.stdout)
+            
+        else:
+            bot.reply_to(message,  result.stderr)
+        
+        
+        
 bot.infinity_polling()
