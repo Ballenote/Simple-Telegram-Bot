@@ -44,10 +44,14 @@ def send_welcome(message):
 @bot.message_handler(commands=['info'])
 def handle(message):
     if (user_verification(message.from_user.id) == True):
-        pubip = requests.get("https://ifconfig.me/").text
-
+        pubipv6 = requests.get("https://ifconfig.me/").text
+        pubipv4 = subprocess.run(
+        ["curl","-4","https://ifconfig.me/"],
+        capture_output=True,
+        text=True
+        ).stdout
         bot.send_message(
-            USER_ID, f"The public IP is: \n\n`{pubip}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n", parse_mode='Markdown')
+            USER_ID, f"The public IPV&/V$ are: \n\n`{pubipv6}`\n\n`{pubipv4}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n", parse_mode='Markdown')
 
 
 @bot.message_handler(commands=['vpn_up'])
@@ -78,7 +82,7 @@ def handle(message):
 def handle(message):
     if (user_verification(message.from_user.id) == True):
         result = subprocess.run(
-        ["sh","/home/casa/Documents/bot_updater.sh", "0"],
+        ["sh","/home/casa/Documents/bot_updater.sh", "1"],
         capture_output=True,
         text=True
         )
@@ -87,7 +91,10 @@ def handle(message):
             
         else:
             bot.reply_to(message,  result.stderr)
-        
-        
+
+@bot.message_handler(commands=['reboot'])
+def handle(message):
+    if (user_verification(message.from_user.id) == True): 
+        subprocess.run(["sudo","reboot"])
         
 bot.infinity_polling()
