@@ -8,93 +8,107 @@ from dotenv import load_dotenv
 load_dotenv("secrets.env")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 USER_ID = os.getenv("USER_ID")
-PUB_KEY = os.getenv("PUB_KEY")
-PORT = os.getenv("PORT")
+
 
 
 def user_verification(uuid):
     #only my user ID can use the bot 
     if (uuid == (int(USER_ID))):
         return True
-    else:
-        print(2)
-        return False
 
 
-def vpn_action(action):
-    #actually turning on or off the Wireguard VPN
-    result = subprocess.run(
-        ["sudo", 'wg-quick', action, 'wg0'],
-        capture_output=True,
-        text=True
-    )
-    return [result.returncode, result.stdout, result.stderr]
+if __name__=="__main__":
+
+    bot = telebot.TeleBot(BOT_TOKEN)
+
+    bot.send_message(USER_ID, "The bot is back online.")
+
+    @bot.message_handler(commands=['start'])
+    def send_welcome(message):
+        if (user_verification(message.from_user.id) == True):
+            bot.reply_to(message, "Welcome")
+
+##############################################
+##              VPN ACTIONS                 ##
+##############################################
+
+    @bot.message_handler(commands=['vpn_up'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "vpn.py", "up"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout)
 
 
-bot = telebot.TeleBot(BOT_TOKEN)
-
-bot.send_message(USER_ID, "The bot is back online")
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    if (user_verification(message.from_user.id) == True):
-        bot.reply_to(message, "Welcome")
-
-
-@bot.message_handler(commands=['info'])
-def handle(message):
-    if (user_verification(message.from_user.id) == True):
-        pubipv6 = requests.get("https://ifconfig.me/").text
-        pubipv4 = subprocess.run(
-        ["curl","-4","https://ifconfig.me/"],
-        capture_output=True,
-        text=True
-        ).stdout
-        bot.send_message(
-            USER_ID, f"The public IPV&/V$ are: \n\n`{pubipv6}`\n\n`{pubipv4}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n", parse_mode='Markdown')
-
-
-@bot.message_handler(commands=['vpn_up'])
-def handle(message):
-    if (user_verification(message.from_user.id) == True):
-        result = vpn_action("up")
-        if (result[0] == 0):
-            bot.reply_to(message, "the VPN is now active")
-        elif (result[0] == 1):
-            bot.reply_to(message,  result[2])
-        else:
-            bot.reply_to(message,  result[2])
-
-
-@bot.message_handler(commands=['vpn_down'])
-def handle(message):
-    if (user_verification(message.from_user.id) == True):
-        result = vpn_action("down")
-        if (result[0] == 0):
-            bot.reply_to(message, "the VPN is now deactivated")
-        elif (result[0] == 1):
-            bot.reply_to(message,  result[2])
-        else:
-            bot.reply_to(message,  result[2])
-
-@bot.message_handler(commands=['update'])
-#it could be useful to trigger a remote update on the raspberry
-def handle(message):
-    if (user_verification(message.from_user.id) == True):
-        result = subprocess.run(
-        ["sh","/home/casa/Documents/bot_updater.sh", "1"],
-        capture_output=True,
-        text=True
-        )
-        if (result.returncode==0):
-            bot.reply_to(message,  result.stdout)
+    @bot.message_handler(commands=['vpn_down'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "vpn.py", "down"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout)
             
-        else:
-            bot.reply_to(message,  result.stderr)
+    @bot.message_handler(commands=['vpn_info'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "vpn.py", "info"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout, parse_mode='Markdown')
+            
+##############################################
+##              SSH ACTIONS                 ##
+##############################################
+    @bot.message_handler(commands=['ssh_up'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "ssh.py", "up"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout)
 
-@bot.message_handler(commands=['reboot'])
-def handle(message):
-    if (user_verification(message.from_user.id) == True): 
-        subprocess.run(["sudo","reboot"])
-        
-bot.infinity_polling()
+
+    @bot.message_handler(commands=['ssh_down'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "ssh.py", "down"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout)
+    
+    @bot.message_handler(commands=['ssh_status'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "ssh.py", "status"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout)
+
+    @bot.message_handler(commands=['ssh_info'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(["python", "ssh.py", "info"],capture_output=True, text=True)
+            bot.reply_to(message,result.stdout, parse_mode='Markdown')
+            
+    @bot.message_handler(commands=['ssh_add'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            bot.reply_to(message,"Paste the public key found by doing \n`cat ~/.ssh/raspberry.pub`\n or write <No> to abort",parse_mode='Markdown')
+            bot.register_next_step_handler(message,step2)
+    def step2(message):
+        if (user_verification(message.from_user.id) == True):
+            nos=["no","nO","No","NO"]
+            if message.text in nos:
+                bot.reply_to(message,"Operation aborted")
+            else:
+                result = subprocess.run(["python", "ssh.py", "add",message.text],capture_output=True, text=True)
+                bot.reply_to(message,result.stdout)
+
+##############################################
+##              MISC ACTIONS                ##
+##############################################
+    @bot.message_handler(commands=['update'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True):
+            result = subprocess.run(
+            ["python","misc.py", "update"],
+            capture_output=True,
+            text=True
+            )
+            bot.reply_to(message,  result.stdout)
+
+    @bot.message_handler(commands=['reboot'])
+    def handle(message):
+        if (user_verification(message.from_user.id) == True): 
+            subprocess.run(["python","misc.py","reboot"])
+            
+    bot.infinity_polling()
