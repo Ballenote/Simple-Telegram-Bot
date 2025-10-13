@@ -40,19 +40,22 @@ def ssh_status():
     output, error = p2.communicate()
     return output.decode()
 
+
 def ssh_info():
     load_dotenv("secrets.env")
-    PORT=os.getenv("SSH_PORT")
-    IP=os.getenv("LOCAL_IP")
-    line=f"To connect to the machine, first connect through Wireguard and then run:\n\n`ssh -i ~/.ssh/raspberry -p {PORT} casa@{IP}`\n"
+    PORT = os.getenv("SSH_PORT")
+    IP = os.getenv("LOCAL_IP")
+    line = f"To connect to the machine, first connect through Wireguard and then run:\n\n`ssh -i ~/.ssh/raspberry -p {PORT} casa@{IP}`\n"
     return line
 
+
 def ssh_add(cert):
-    with open("/home/casa/.ssh/authorised_keys","a") as f:
+    with open("/home/casa/.ssh/authorised_keys", "a") as f:
         f.write(cert)
     f.close()
     return "Certificate added."
-    
+
+
 if __name__ == "__main__":
 
     output = "If you see this there was an error in the code"

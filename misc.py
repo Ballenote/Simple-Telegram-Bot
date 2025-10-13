@@ -9,22 +9,24 @@ def update():
         text=True
     )
     if (result.returncode == 0):
-        return(result.stdout)
+        return (result.stdout)
 
     else:
-        return(result.stderr)
+        return (result.stderr)
+
 
 def reboot():
-    subprocess.run(["sudo","reboot"])
-    
-if __name__=="__main__":
-    
+    subprocess.run(["sudo", "reboot"])
+
+
+if __name__ == "__main__":
+
     output = "If you see this there was an error in the code"
 
     match sys.argv[1]:
         case "update":
-            output=update()
+            output = update()
         case "reboot":
             reboot()
-    
+
     print(output)
