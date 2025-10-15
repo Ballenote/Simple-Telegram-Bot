@@ -2,125 +2,161 @@ import subprocess
 import sys
 import os
 from dotenv import load_dotenv
-import io
-import base64
 
 path = "/home/casa/Documents/Wireguard_Peers"
+output = "if you see this there was a problem"
 
 
 def load_peers():
+    # Loading the configuration of each peer after the server has started
     loaded = []
-    path = "/home/casa/Documents/Wireguard_Peers"
+
     for peer in sorted(os.listdir(path)):
         for conf in os.listdir(f"{path}/{peer}"):
-            if conf == f"server.conf":
-                print(peer)
-                with open(f"{path}/{peer}/{conf}") as f:
+            if conf == "server.conf":
+
+                with open(f"{path}/{peer}/{conf}", "r") as f:
                     lines = f.read()
                 f.close()
+
                 info = lines.split()
-                print(info)
                 result = subprocess.run(
-                    ["sudo", "wg", "set", "wg0", "peer", info[0], "allowed-ips", info[1], "preshared-key", info[2]], capture_output=True, text=True)
-                if (result.returncode == 0):
-                    loaded.append(peer)
+                    [
+                        "sudo",
+                        "wg",
+                        "set",
+                        "wg0",
+                        "peer",
+                        info[0],
+                        "allowed-ips",
+                        info[1],
+                        "preshared-key",
+                        info[2],
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+
+                if result.returncode == 0:
+                    loaded.append(peer[1:])
                 else:
                     loaded.append(result.stderr)
+
     return loaded
 
 
 def vpn_action(action):
-    # Actually turning on or off the Wireguard instance
+    # Turning on and off the Wireguard instance
     result = subprocess.run(
-        ["sudo", 'wg-quick', action, 'wg0'],
-        capture_output=True,
-        text=True
+        ["sudo", "wg-quick", action, "wg0"], capture_output=True, text=True
     )
-    if (result.returncode == 0):
-        if (sys.argv[1] == "up"):
+
+    if result.returncode == 0:
+        if action == "up":
             output = "The VPN is now active."
+
             loaded = load_peers()
-            output = output+"\n peers loaded:\n"
+            output = output + "\n peers loaded:\n"
             for element in loaded:
-                output = output+f"{element}\n"
+                output = output + f"{element}\n"
+
+    else:
+        if action == "up":
+            output = "There was an error in performing the operation. (The VPN should be already active)"
         else:
             output = "The VPN is now deactivated."
-    else:
-        output = result.stderr
+
     return output
 
 
 def vpn_info(special):
-    # Gathering useful info for Wireguard
+    # Gathering useful info for Wireguard clients
 
     load_dotenv("secrets.env")
     PUB_KEY = os.getenv("PUB_KEY")
     PORT = os.getenv("VPN_PORT")
+
     pubipv6 = subprocess.run(
-        ["curl", "https://ifconfig.me/"],
-        capture_output=True,
-        text=True
+        ["curl", "https://ifconfig.me/"], capture_output=True, text=True
     ).stdout
+
     pubipv4 = subprocess.run(
-        ["curl", "-4", "https://ifconfig.me/"],
-        capture_output=True,
-        text=True
+        ["curl", "-4", "https://ifconfig.me/"], capture_output=True, text=True
     ).stdout
-    if (special == True):
-        return [pubipv4, PORT, PUB_KEY]
+
+    if special is True:
+        # Providing info in a different format
+        output = [pubipv4, PORT, PUB_KEY]
     else:
-        return f"The public IPV6 and V4 are: \n\n`{pubipv6}`\n\n`{pubipv4}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n"
+        output = f"The public IPV6 and IPV4 are: \n\n`{pubipv6}`\n\n`{pubipv4}`\n\nThe WireGuard port is \n\n`{PORT}`\n\nThe public key of the server is \n\n`{PUB_KEY}`\n"
+
+    return output
 
 
 def vpn_status():
-    result = subprocess.run(
-        ["sudo", 'wg', 'show'],
-        capture_output=True,
-        text=True
-    )
-    if (len(result.stdout) > 0):
-        return "the VPN connection is active"
+    # Shows the status of the Wireguard interface on the server
+    result = subprocess.run(["sudo", "wg", "show"], capture_output=True, text=True)
+    if len(result.stdout) > 0:
+        output = "the VPN connection is active"
     else:
-        return "the VPN connection is not active"
+        output = "the VPN connection is not active"
+
+    return output
 
 
 def vpn_list():
+    # Lists all the peers that the VPN provides a connection to
     output = ""
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
+
     for peer in os.listdir(path):
-        output = output+"`"+peer+"`\n"
+        output = output + "`" + peer[2:] + "`\n"
     if output == "":
         output = "Nothing to show"
+
     return output
 
 
 def peer_find(name):
+    # finds if a peer is present in the configuration
     found = False
     latest = 1
-    name = name.strip().lower()
+
     for peer in sorted(os.listdir(path)):
         tmp = peer.split("_")
         latest = int(tmp[0])
-        if (name == tmp[1]):
+        if name == tmp[1]:
             found = True
             break
+
     return found, latest
 
 
 def vpn_create(newPeer):
-    output = "if you see this there was a problem"
-    newPeer = newPeer.strip().lower()
+    # Creates a new peer
     found, latest = peer_find(newPeer)
 
-    if (found == True):
-        output = f"The peer already exists with ID {latest}"
+    if found is True:
+        output = vpn_get(newPeer)
     else:
         info = vpn_info(True)
-        result = subprocess.run(["bash", "/home/casa/Documents/Simple-Telegram-Bot/vpn_creator.sh", str(path), str(latest+1), str(
-            newPeer.strip().lower()), str(info[0]), str(info[1]), str(info[2])], capture_output=True, text=True)
-        if (result.returncode == 0):
-            output = "To be pasted in the wg0.conf file in the machine:"
+        result = subprocess.run(
+            [
+                "bash",
+                "/home/casa/Documents/telegram-bot/vpn_creator.sh",
+                str(path),
+                str(latest + 1),
+                str(newPeer.strip().lower()),
+                str(info[0]),
+                str(info[1]),
+                str(info[2]),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            output = vpn_get(newPeer)
         else:
             output = result.stderr
 
@@ -128,23 +164,20 @@ def vpn_create(newPeer):
 
 
 def vpn_get(name):
-    output = "if you see this there was a problem"
-    name = name.strip().lower()
     found, id = peer_find(name)
-
     if not found:
         output = f"Unable to locate {name}"
     else:
         dir = f"{path}/{id}_{name}"
         result = subprocess.run(
-            ["cat", f"{dir}/{name}.conf"], capture_output=True, text=True)
+            ["cat", f"{dir}/{name}.conf"], capture_output=True, text=True
+        )
         output = f"`{result.stdout}`"
+
     return output
 
 
 def vpn_get_image(name):
-    output = "if you see this there was a problem"
-    name = name.strip().lower()
     found, id = peer_find(name)
 
     if not found:
@@ -152,7 +185,8 @@ def vpn_get_image(name):
     else:
         dir = f"{path}/{id}_{name}"
         output = f"{dir}/{name}-qr.png"
-    return output
+
+    return [found, output]
 
 
 if __name__ == "__main__":
@@ -171,10 +205,10 @@ if __name__ == "__main__":
         case "list":
             output = vpn_list()
         case "create":
-            output = vpn_create(sys.argv[2])
+            output = vpn_create(sys.argv[2].strip().lower())
         case "get":
-            output = vpn_get(sys.argv[2])
+            output = vpn_get(sys.argv[2].strip().lower())
         case "get_image":
-            output = vpn_get_image(sys.argv[2])
+            output = vpn_get_image(sys.argv[2].strip().lower())
 
     print(output)

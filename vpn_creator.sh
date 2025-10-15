@@ -9,6 +9,12 @@ pubk="$6"
 
 path="$dir"/"$id"_"$peer"
 
+if [ -d "$path" ]; then
+    echo "The peer already exists" >&2
+    exit 1
+fi
+
+
 mkdir $path
 cd $path
 
@@ -35,4 +41,5 @@ echo "$path/$peer-psk.key" >> "server.conf"
 
 #generating QR
 qrencode -o "$peer-qr.png" < "$peer.conf"
+
 exit 0

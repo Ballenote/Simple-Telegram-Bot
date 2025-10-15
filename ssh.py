@@ -3,62 +3,70 @@ import os
 import sys
 from dotenv import load_dotenv
 
+output = "If you see this there was an error in the code"
+
 
 def ssh_action(action):
+    # Starting or stopping the SSH server
     result = subprocess.run(
-        ["sudo", 'systemctl', action, 'ssh.service'],
+        ["sudo", "systemctl", action, "ssh.service"],
         capture_output=True,
         text=True,
-        check=False
+        check=False,
     )
-    if (action == "stop"):
+
+    if action == "stop":
+        # stopping the ssh server also requires stopping its socket
         result2 = subprocess.run(
-            ["sudo", 'systemctl', action, 'ssh.socket'],
-            capture_output=True,
-            text=True,
-            check=False
+            ["sudo", "systemctl", action, "ssh.socket"], capture_output=True, text=True
         )
 
     if result.returncode == 0:
         if action == "stop":
             if result2.returncode == 0:
-                return "The SSH connection is deactivated"
+                output = "The SSH connection is deactivated"
             else:
-                return result2.stderr
+                output = result2.stderr
         else:
-            return "The SSH connection is activated"
+            output = "The SSH connection is activated"
     else:
-        return result.stderr
+        output = result.stderr
+
+    return output
 
 
 def ssh_status():
-    p1 = subprocess.Popen(["sudo", "systemctl", "status",
-                          "ssh"], stdout=subprocess.PIPE)
-    p2 = subprocess.Popen(["grep", "Active"],
-                          stdin=p1.stdout, stdout=subprocess.PIPE)
+    # Checks the status of the SSH server
+    p1 = subprocess.Popen(
+        ["sudo", "systemctl", "status", "ssh"], stdout=subprocess.PIPE
+    )
+    p2 = subprocess.Popen(["grep", "Active"], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
     output, error = p2.communicate()
+
     return output.decode()
 
 
 def ssh_info():
+    # Gets useful info to connect to the SSH server
     load_dotenv("secrets.env")
     PORT = os.getenv("SSH_PORT")
     IP = os.getenv("LOCAL_IP")
-    line = f"To connect to the machine, first connect through Wireguard and then run:\n\n`ssh -i ~/.ssh/raspberry -p {PORT} casa@{IP}`\n"
-    return line
+    output = f"To connect to the machine, first connect through Wireguard and then run:\n\n`ssh -i ~/.ssh/raspberry -p {PORT} casa@{IP}`\n"
+
+    return output
 
 
 def ssh_add(cert):
+    # Adds and authorised key to connect
     with open("/home/casa/.ssh/authorised_keys", "a") as f:
         f.write(cert)
     f.close()
+
     return "Certificate added."
 
 
 if __name__ == "__main__":
-
-    output = "If you see this there was an error in the code"
 
     match sys.argv[1]:
         case "up":
