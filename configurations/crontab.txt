@@ -1,4 +1,4 @@
-@reboot /home/casa/Documents/Simple-Telegram-Bot/bot_launcher.sh
+@reboot bash /home/casa/Documents/Simple-Telegram-Bot/bot_launcher.sh
 0 8 * * 6 sudo apt update
 30 8 * * 6 sudo apt upgrade
 00 12 * * 6 sh /home/casa/Documents/Simple-Telegram-Bot/bot_updater.sh 1

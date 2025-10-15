@@ -12,14 +12,17 @@ def update():
         text=True,
     )
     if result.returncode == 0:
-        return result.stdout
+        output="Updates downloaded"
     else:
         return result.stderr
+
+    return output
 
 
 def reboot():
     # Rebooting the system
     subprocess.run(["sudo", "reboot"])
+    return "rebooting"
 
 
 if __name__ == "__main__":
@@ -28,7 +31,7 @@ if __name__ == "__main__":
         case "update":
             output = update()
         case "reboot":
-            reboot()
+            output=reboot()
         case "start":
             output = "Welcome!"
         case _:
