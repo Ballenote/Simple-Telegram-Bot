@@ -123,7 +123,7 @@ if __name__ == "__main__":
                         capture_output=True,
                         text=True,
                     )
-                    print(result)
+                    
                     if result.returncode == 0:
                         output = result.stdout
                     else:

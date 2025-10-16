@@ -53,18 +53,15 @@ def vpn_action(action):
 
     if result.returncode == 0:
         if action == "up":
-            output = "The VPN is now active."
+            
+            output = "The VPN is now active.\nPeers loaded:"
 
             loaded = load_peers()
-            output = output + "\n peers loaded:\n"
             for element in loaded:
-                output = output + f"{element}\n"
+                output = output + f"\n{element[1:]}"
 
     else:
-        if action == "up":
-            output = "There was an error in performing the operation. (The VPN should be already active)"
-        else:
-            output = "The VPN is now deactivated."
+        output = vpn_status()
 
     return output
 
