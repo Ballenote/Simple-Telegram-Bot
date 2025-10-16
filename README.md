@@ -19,7 +19,28 @@ This project runs a telegram bot that has the following features:
 1. Check for an `update` in the git repository and download it
 2. `reboot` the machine
 
+BEAR IN MIND THAT THIS BOT WILL ONLY WORK BY SPECIFYING YOUR TELEGRAM USER ID.
+
 ## Installation
+### Creating the bot in Telegram
+1. Create a new bot in `BotFather`
+2. Copy the API key for later use
+3. Add the following commands:
+```
+/vpn_up
+/vpn_down
+/vpn_list
+/vpn_info
+/vpn_status
+/vpn_create
+/vpn_get
+/ssh_up
+/ssh_down
+/ssh_status
+/ssh_add
+/update
+/reboot
+```
 
 ### Cloning the repository 
 1. Install Git by running `sudo apt-get install git-all`
@@ -59,7 +80,7 @@ AllowAgentForwarding no
 AllowTcpForwarding yes  
 LogLevel VERBOSE
 PubkeyAuthentication yes
-AuthorizedKeysFile /home/casa/.ssh/authorised_keys
+AuthorizedKeysFile /home/<your user>/.ssh/authorised_keys
 ```
 3. Create the authorised_keys file: `touch ~/.ssh/authorised_keys`
 
@@ -75,4 +96,5 @@ To generate a key in the client and later push it to the bot in the autorised ke
 
 ### Running the bot
 You can either reboot the system or launch the bot
+**You will generally have to check that the user in some paths corresponds to the user in your machine!**
 
